@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="ua">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP8266 Інформація</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* Стилі залишаються без змін */
+        body {
+            background: linear-gradient(135deg, #f8f9fa, #e0eafc, #c0d8ff);
+            min-height: 100vh;
+            padding: 15px;
+            position: relative;
+            overflow-x: hidden;
+            transition: all 0.5s ease;
+            animation: lightGradientShift 20s infinite ease-in-out;
+        }
+        body.light-mode::before, body.light-mode::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0.3;
+            z-index: -1;
+            pointer-events: none;
+        }
+        body.light-mode::before {
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300"><circle cx="100" cy="100" r="50" fill="#000000" opacity="0.8"/><rect x="150" y="150" width="100" height="100" fill="#000000" opacity="0.7"/><polygon points="250,50 290,150 210,150" fill="#000000" opacity="0.7"/></svg>') repeat;
+            animation: shapeDrift 25s infinite linear;
+        }
+        body.light-mode::after {
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300"><polygon points="100,250 140,300 60,300" fill="#000000" opacity="0.8"/><rect x="180" y="50" width="80" height="80" fill="#000000" opacity="0.7"/><circle cx="250" cy="250" r="40" fill="#000000" opacity="0.7"/></svg>') repeat;
+            animation: shapeDrift 30s infinite linear reverse;
+        }
+        body.dark-mode {
+            background: linear-gradient(135deg, #2d3e50, #4a657a, #6a8ea5);
+            animation: darkGradientShift 20s infinite ease-in-out;
+        }
+        body.dark-mode::before, body.dark-mode::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0.2;
+            z-index: -1;
+            pointer-events: none;
+        }
+        body.dark-mode::before {
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300"><circle cx="100" cy="100" r="50" fill="#000000" opacity="0.9"/><rect x="150" y="150" width="100" height="100" fill="#000000" opacity="0.8"/><polygon points="250,50 290,150 210,150" fill="#000000" opacity="0.8"/></svg>') repeat;
+            animation: shapeDrift 25s infinite linear;
+        }
+        body.dark-mode::after {
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300"><polygon points="100,250 140,300 60,300" fill="#000000" opacity="0.9"/><rect x="180" y="50" width="80" height="80" fill="#000000" opacity="0.8"/><circle cx="250" cy="250" r="40" fill="#000000" opacity="0.8"/></svg>') repeat;
+            animation: shapeDrift 30s infinite linear reverse;
+        }
+        @keyframes lightGradientShift {
+            0% { background-position: 0% 0%; }
+            50% { background-position: 20% 20%; opacity: 0.95; }
+            100% { background-position: 0% 0%; opacity: 1.0; }
+        }
+        @keyframes darkGradientShift {
+            0% { background-position: 0% 0%; }
+            50% { background-position: 15% 15%; opacity: 0.95; }
+            100% { background-position: 0% 0%; opacity: 1.0; }
+        }
+        @keyframes shapeDrift {
+            0% { background-position: 0 0; }
+            100% { background-position: 300px 300px; }
+        }
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.9);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            padding: 10px 20px;
+            z-index: 1000;
+            transition: all 0.5s ease;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        body.dark-mode header {
+            background: rgba(45, 60, 80, 0.9);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        header .navbar-brand {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #333;
+            transition: color 0.5s ease;
+        }
+        body.dark-mode header .navbar-brand {
+            color: #fff;
+        }
+        header .nav-container {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        header .nav-link {
+            color: #555;
+            font-weight: 500;
+            text-decoration: none;
+            transition: color 0.3s ease;
+            font-size: 1.5rem;
+        }
+        body.dark-mode header .nav-link {
+            color: #ddd;
+        }
+        header .nav-link:hover {
+            color: #ff5722;
+        }
+        body.dark-mode header .nav-link:hover {
+            color: #ff7043;
+        }
+        header .theme-toggle {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: #555;
+            cursor: pointer;
+            transition: color 0.3s ease, transform 0.3s ease;
+        }
+        body.dark-mode header .theme-toggle {
+            color: #ddd;
+        }
+        header .theme-toggle:hover {
+            color: #ff5722;
+            transform: scale(1.2);
+        }
+        body.dark-mode header .theme-toggle:hover {
+            color: #ff7043;
+        }
+        .container {
+            margin-top: 80px;
+            min-height: calc(100vh - 80px);
+        }
+        .card {
+            border: none;
+            border-radius: 20px;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+            background: rgba(255, 255, 255, 0.95);
+            transition: all 0.5s ease;
+            margin-bottom: 30px;
+        }
+        body.dark-mode .card {
+            background: rgba(45, 60, 80, 0.95);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+            color: #fff;
+        }
+        body.dark-mode .data-item {
+            background: rgba(60, 75, 95, 0.7);
+        }
+        body.dark-mode .data-item i {
+            color: #ddd;
+        }
+        body.dark-mode .footer {
+            color: #ddd;
+        }
+        .data-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            background: rgba(250, 250, 250, 0.8);
+            border-radius: 12px;
+            margin-bottom: 12px;
+            flex-wrap: nowrap;
+            transition: all 0.5s ease;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+        .data-item i {
+            font-size: 1.6rem;
+            margin-right: 12px;
+            color: #555;
+            flex-shrink: 0;
+            transition: color 0.5s ease;
+        }
+        .data-label {
+            font-size: 1.2rem;
+            flex-grow: 1;
+            min-width: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            transition: color 0.5s ease;
+        }
+        .data-value {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-left: 12px;
+            flex-shrink: 0;
+            transition: color 0.5s ease;
+        }
+        .toggle-btn {
+            width: 100%;
+            padding: 12px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            border-radius: 15px;
+            margin-top: 10px;
+            background: linear-gradient(135deg, #6c757d, #5a6268);
+            color: white;
+            border: none;
+            transition: all 0.5s ease;
+            text-align: center;
+        }
+        .toggle-btn:hover {
+            opacity: 0.9;
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        body.dark-mode .toggle-btn {
+            background: linear-gradient(135deg, #5a6268, #495057);
+        }
+        .additional-info {
+            display: none;
+            margin-top: 15px;
+        }
+        .additional-info.active {
+            display: block;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 15px;
+            font-size: 1rem;
+            color: #666;
+            transition: color 0.5s ease;
+        }
+        @media (max-width: 768px) {
+            .col-md-6 {
+                width: 100%;
+                margin-bottom: 20px;
+            }
+        }
+        @media (max-width: 450px) {
+            header { padding: 5px 10px; }
+            header .navbar-brand { font-size: 1.2rem; }
+            header .nav-container { gap: 10px; }
+            header .nav-link { font-size: 1.2rem; }
+            header .theme-toggle { font-size: 1.2rem; }
+            .container { margin-top: 60px; min-height: calc(100vh - 60px); }
+            .card-body { padding: 10px; }
+            .data-item { padding: 8px; }
+            .data-label { font-size: 0.9rem; }
+            .data-value { font-size: 0.9rem; }
+            .data-item i { font-size: 1.2rem; margin-right: 5px; }
+            .toggle-btn { font-size: 1rem; padding: 8px; }
+        }
+    </style>
+</head>
+<body class="light-mode">
+    <header>
+        <nav class="navbar">
+            <span class="navbar-brand"><i class="fas fa-microchip me-2"></i>ESP8266</span>
+            <div class="nav-container">
+                <a class="nav-link" href="/index.html" title="Головна"><i class="fas fa-home"></i></a>
+                <a class="nav-link active" href="/info.html" title="Інформація"><i class="fas fa-info-circle"></i></a>
+                <button id="openTempChartHeader" class="theme-toggle" title="Графік температури"><i class="fas fa-thermometer-half"></i></button>
+                <button id="openHumidityChartHeader" class="theme-toggle" title="Графік вологості"><i class="fas fa-tint"></i></button>
+                <button id="resetEsp" class="theme-toggle" title="Скинути ESP8266"><i class="fas fa-sync-alt"></i></button>
+                <button id="toggleThemeHeader" class="theme-toggle"><i class="fas fa-sun"></i></button>
+            </div>
+        </nav>
+    </header>
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h2 class="card-title text-center mb-4">
+                            <i class="fas fa-info-circle me-2"></i>Основна інформація
+                        </h2>
+                        <div class="data-item">
+                            <i class="fas fa-thermometer-half"></i>
+                            <span class="data-label">Температура</span>
+                            <span class="data-value" id="temperature"><span id="temperatureTrend"></span>--°C</span>
+                        </div>
+                        <div class="data-item">
+                            <i class="fas fa-temperature-high"></i>
+                            <span class="data-label">Макс. температура</span>
+                            <span class="data-value" id="maxTemp">--°C <small id="maxTempTime">--</small></span>
+                        </div>
+                        <div class="data-item">
+                            <i class="fas fa-temperature-low"></i>
+                            <span class="data-label">Мін. температура</span>
+                            <span class="data-value" id="minTemp">--°C <small id="minTempTime">--</small></span>
+                        </div>
+                        <div class="data-item">
+                            <i class="fas fa-tint"></i>
+                            <span class="data-label">Вологість</span>
+                            <span class="data-value" id="humidity"><span id="humidityTrend"></span>--%</span>
+                        </div>
+                        <div class="data-item">
+                            <i class="fas fa-tint-slash"></i>
+                            <span class="data-label">Макс. вологість</span>
+                            <span class="data-value" id="maxHumid">--% <small id="maxHumidTime">--</small></span>
+                        </div>
+                        <div class="data-item">
+                            <i class="fas fa-tint-slash"></i>
+                            <span class="data-label">Мін. вологість</span>
+                            <span class="data-value" id="minHumid">--% <small id="minHumidTime">--</small></span>
+                        </div>
+                        <div class="footer">Дані оновлюються в реальному часі</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h2 class="card-title text-center mb-4">
+                            <i class="fas fa-microchip me-2"></i>Системна інформація
+                        </h2>
+                        <div class="data-item">
+                            <i class="fas fa-signal"></i>
+                            <span class="data-label">Рівень сигналу Wi-Fi (RSSI)</span>
+                            <span class="data-value" id="rssi">-- dBm</span>
+                        </div>
+                        <div class="data-item">
+                            <i class="fas fa-network-wired"></i>
+                            <span class="data-label">IP-адреса</span>
+                            <span class="data-value" id="localIp">--</span>
+                        </div>
+                        <div class="data-item">
+                            <i class="fas fa-ethernet"></i>
+                            <span class="data-label">MAC-адреса</span>
+                            <span class="data-value" id="macAddress">--</span>
+                        </div>
+                        <div class="data-item">
+                            <i class="fas fa-memory"></i>
+                            <span class="data-label">Вільна пам’ять (Heap)</span>
+                            <span class="data-value" id="freeHeapPercent">--%</span>
+                        </div>
+                        <div class="data-item">
+                            <i class="fas fa-memory"></i>
+                            <span class="data-label">Вільна пам’ять (Stack)</span>
+                            <span class="data-value" id="freeStackPercent">--%</span>
+                        </div>
+                        <div class="data-item">
+                            <i class="fas fa-memory"></i>
+                            <span class="data-label">Розмір скетчу</span>
+                            <span class="data-value" id="sketchSizePercent">--%</span>
+                        </div>
+                        <div class="data-item">
+                            <i class="fas fa-clock"></i>
+                            <span class="data-label">Час роботи</span>
+                            <span class="data-value" id="uptime">-- год -- хв</span>
+                        </div>
+                        <button id="toggleAdditionalInfo" class="toggle-btn">Показати додаткову інформацію</button>
+                        <div id="additionalInfo" class="additional-info">
+                            <div class="data-item">
+                                <i class="fas fa-redo"></i>
+                                <span class="data-label">Кількість перезапусків</span>
+                                <span class="data-value" id="bootCount">--</span>
+                            </div>
+                            <div class="data-item">
+                                <i class="fas fa-exclamation-circle"></i>
+                                <span class="data-label">Причина останнього перезапуску</span>
+                                <span class="data-value" id="resetReason">--</span>
+                            </div>
+                            <div class="data-item">
+                                <i class="fas fa-tachometer-alt"></i>
+                                <span class="data-label">Частота процесора</span>
+                                <span class="data-value" id="cpuFreq">-- MHz</span>
+                            </div>
+                            <div class="data-item">
+                                <i class="fas fa-hdd"></i>
+                                <span class="data-label">Використання LittleFS</span>
+                                <span class="data-value" id="fsUsagePercent">--%</span>
+                            </div>
+                            <div class="data-item">
+                                <i class="fas fa-code"></i>
+                                <span class="data-label">Версія прошивки</span>
+                                <span class="data-value" id="firmwareVersion">--</span>
+                            </div>
+                            <div class="data-item">
+                                <i class="fas fa-code-branch"></i>
+                                <span class="data-label">Версія ядра</span>
+                                <span class="data-value" id="coreVersion">--</span>
+                            </div>
+                            <div class="data-item">
+                                <i class="fas fa-users"></i>
+                                <span class="data-label">Кількість клієнтів (Wi-Fi AP)</span>
+                                <span class="data-value" id="clientCount">--</span>
+                            </div>
+                        </div>
+                        <div class="footer">Системні дані оновлюються в реальному часі</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let lastHumidityTrend = '';
+        let lastTemperatureTrend = '';
+
+        function updateData() {
+            fetch('/data')
+                .then(response => response.json())
+                .then(data => {
+                    const tempSpan = document.getElementById('temperature');
+                    tempSpan.innerHTML = `<span id="temperatureTrend">${lastTemperatureTrend}</span>${data.temperature}°C`;
+                    const humiditySpan = document.getElementById('humidity');
+                    humiditySpan.innerHTML = `<span id="humidityTrend">${lastHumidityTrend}</span>${data.humidity}%`;
+                })
+                .catch(error => console.log('Помилка:', error));
+        }
+
+        function updateSystemInfo() {
+            fetch('/systemInfo')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('rssi').innerText = `${data.rssi} dBm`;
+                    document.getElementById('localIp').innerText = data.localIp;
+                    document.getElementById('macAddress').innerText = data.macAddress;
+                    document.getElementById('freeHeapPercent').innerText = `${data.freeHeapPercent}%`;
+                    document.getElementById('freeStackPercent').innerText = `${data.freeStackPercent}%`;
+                    document.getElementById('sketchSizePercent').innerText = `${data.sketchSizePercent}%`;
+                    const uptimeHours = Math.floor(data.uptime / 3600);
+                    const uptimeMinutes = Math.floor((data.uptime % 3600) / 60);
+                    document.getElementById('uptime').innerText = `${uptimeHours} год ${uptimeMinutes} хв`;
+                    // Додаткові поля
+                    document.getElementById('bootCount').innerText = data.bootCount || '--';
+                    document.getElementById('resetReason').innerText = data.resetReason || '--';
+                    document.getElementById('cpuFreq').innerText = `${data.cpuFreq} MHz` || '-- MHz';
+                    document.getElementById('fsUsagePercent').innerText = `${data.fsUsagePercent}%` || '--%';
+                    document.getElementById('firmwareVersion').innerText = data.firmwareVersion || '--';
+                    document.getElementById('coreVersion').innerText = data.coreVersion || '--';
+                    document.getElementById('clientCount').innerText = data.clientCount || '--';
+                })
+                .catch(error => console.log('Помилка:', error));
+        }
+
+        function updateExtremes() {
+            fetch('/graphData')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('maxTemp').innerHTML = `${data.maxTemp}°C <small id="maxTempTime">${findTime(data.temperature, data.maxTemp, data.timestamps)}</small>`;
+                    document.getElementById('minTemp').innerHTML = `${data.minTemp}°C <small id="minTempTime">${findTime(data.temperature, data.minTemp, data.timestamps)}</small>`;
+                    document.getElementById('maxHumid').innerHTML = `${data.maxHumid}% <small id="maxHumidTime">${findTime(data.humidity, data.maxHumid, data.timestamps)}</small>`;
+                    document.getElementById('minHumid').innerHTML = `${data.minHumid}% <small id="minHumidTime">${findTime(data.humidity, data.minHumid, data.timestamps)}</small>`;
+                })
+                .catch(error => console.log('Помилка:', error));
+        }
+
+        function findTime(values, target, timestamps) {
+            const index = values.indexOf(target);
+            return index !== -1 ? timestamps[index] : '--';
+        }
+
+        function updateHumidityTrend() {
+            fetch('/humidityTrend')
+                .then(response => response.json())
+                .then(data => {
+                    const trend = data.trend;
+                    let newTrend = '';
+                    if (trend.length >= 3) {
+                        const [latest, second, third] = trend;
+                        if (latest > second && second > third) {
+                            newTrend = '<svg width="12" height="12" viewBox="0 0 12 12"><polygon points="6,2 10,10 2,10" fill="#ff0000"/></svg>';
+                        } else if (latest < second && second < third) {
+                            newTrend = '<svg width="12" height="12" viewBox="0 0 12 12"><polygon points="6,10 10,2 2,2" fill="#0000ff"/></svg>';
+                        }
+                    }
+                    if (newTrend !== lastHumidityTrend) {
+                        lastHumidityTrend = newTrend;
+                        const humiditySpan = document.getElementById('humidity');
+                        const currentHumidity = humiditySpan.innerText.replace(/[^0-9.]/g, '') + '%';
+                        humiditySpan.innerHTML = `<span id="humidityTrend">${lastHumidityTrend}</span>${currentHumidity}`;
+                    }
+                })
+                .catch(error => console.log('Помилка:', error));
+        }
+
+        function updateTemperatureTrend() {
+            fetch('/temperatureTrend')
+                .then(response => response.json())
+                .then(data => {
+                    const trend = data.trend;
+                    let newTrend = '';
+                    if (trend.length >= 3) {
+                        const [latest, second, third] = trend;
+                        if (latest > second && second > third) {
+                            newTrend = '<svg width="12" height="12" viewBox="0 0 12 12"><polygon points="6,2 10,10 2,10" fill="#ff0000"/></svg>';
+                        } else if (latest < second && second < third) {
+                            newTrend = '<svg width="12" height="12" viewBox="0 0 12 12"><polygon points="6,10 10,2 2,2" fill="#0000ff"/></svg>';
+                        }
+                    }
+                    if (newTrend !== lastTemperatureTrend) {
+                        lastTemperatureTrend = newTrend;
+                        const tempSpan = document.getElementById('temperature');
+                        const currentTemp = tempSpan.innerText.replace(/[^0-9.]/g, '') + '°C';
+                        tempSpan.innerHTML = `<span id="temperatureTrend">${lastTemperatureTrend}</span>${currentTemp}`;
+                    }
+                })
+                .catch(error => console.log('Помилка:', error));
+        }
+
+        function toggleTheme() {
+            const body = document.body;
+            const toggleHeader = document.getElementById('toggleThemeHeader');
+            if (body.classList.contains('light-mode')) {
+                body.classList.remove('light-mode');
+                body.classList.add('dark-mode');
+                toggleHeader.innerHTML = '<i class="fas fa-moon"></i>';
+            } else {
+                body.classList.remove('dark-mode');
+                body.classList.add('light-mode');
+                toggleHeader.innerHTML = '<i class="fas fa-sun"></i>';
+            }
+        }
+
+        document.getElementById('toggleThemeHeader').onclick = toggleTheme;
+
+        document.getElementById('openTempChartHeader').onclick = function() {
+            window.location.href = '/index.html#tempChart';
+        };
+
+        document.getElementById('openHumidityChartHeader').onclick = function() {
+            window.location.href = '/index.html#humidityChart';
+        };
+
+        document.getElementById('resetEsp').onclick = function() {
+            if (confirm('Скинути ESP8266?')) {
+                fetch('/reset')
+                    .then(() => console.log('ESP8266 скинуто'))
+                    .catch(error => console.log('Помилка:', error));
+            }
+        };
+
+        document.getElementById('toggleAdditionalInfo').onclick = function() {
+            const additionalInfo = document.getElementById('additionalInfo');
+            additionalInfo.classList.toggle('active');
+            this.innerText = additionalInfo.classList.contains('active') ? 'Приховати додаткову інформацію' : 'Показати додаткову інформацію';
+        };
+
+        setInterval(updateData, 1000);
+        setInterval(updateSystemInfo, 1000);
+        setInterval(updateExtremes, 1000);
+        setInterval(() => {
+            updateHumidityTrend();
+            updateTemperatureTrend();
+        }, 10000);
+        updateData();
+        updateSystemInfo();
+        updateExtremes();
+        updateHumidityTrend();
+        updateTemperatureTrend();
+    </script>
+</body>
+</html>

@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="ua">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ESP8266 Моніторинг</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <style>
+        /* Стилі залишилися без змін */
+        body {
+            background: linear-gradient(135deg, #f8f9fa, #e0eafc, #c0d8ff);
+            min-height: 100vh;
+            padding: 15px;
+            position: relative;
+            overflow-x: hidden;
+            transition: all 0.5s ease;
+            animation: lightGradientShift 20s infinite ease-in-out;
+        }
+        body.light-mode::before, body.light-mode::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0.3;
+            z-index: -1;
+            pointer-events: none;
+        }
+        body.light-mode::before {
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300"><circle cx="100" cy="100" r="50" fill="#000000" opacity="0.8"/><rect x="150" y="150" width="100" height="100" fill="#000000" opacity="0.7"/><polygon points="250,50 290,150 210,150" fill="#000000" opacity="0.7"/></svg>') repeat;
+            animation: shapeDrift 25s infinite linear;
+        }
+        body.light-mode::after {
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300"><polygon points="100,250 140,300 60,300" fill="#000000" opacity="0.8"/><rect x="180" y="50" width="80" height="80" fill="#000000" opacity="0.7"/><circle cx="250" cy="250" r="40" fill="#000000" opacity="0.7"/></svg>') repeat;
+            animation: shapeDrift 30s infinite linear reverse;
+        }
+        body.dark-mode {
+            background: linear-gradient(135deg, #2d3e50, #4a657a, #6a8ea5);
+            animation: darkGradientShift 20s infinite ease-in-out;
+        }
+        body.dark-mode::before, body.dark-mode::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0.2;
+            z-index: -1;
+            pointer-events: none;
+        }
+        body.dark-mode::before {
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300"><circle cx="100" cy="100" r="50" fill="#000000" opacity="0.9"/><rect x="150" y="150" width="100" height="100" fill="#000000" opacity="0.8"/><polygon points="250,50 290,150 210,150" fill="#000000" opacity="0.8"/></svg>') repeat;
+            animation: shapeDrift 25s infinite linear;
+        }
+        body.dark-mode::after {
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300"><polygon points="100,250 140,300 60,300" fill="#000000" opacity="0.9"/><rect x="180" y="50" width="80" height="80" fill="#000000" opacity="0.8"/><circle cx="250" cy="250" r="40" fill="#000000" opacity="0.8"/></svg>') repeat;
+            animation: shapeDrift 30s infinite linear reverse;
+        }
+        @keyframes lightGradientShift {
+            0% { background-position: 0% 0%; }
+            50% { background-position: 20% 20%; opacity: 0.95; }
+            100% { background-position: 0% 0%; opacity: 1.0; }
+        }
+        @keyframes darkGradientShift {
+            0% { background-position: 0% 0%; }
+            50% { background-position: 15% 15%; opacity: 0.95; }
+            100% { background-position: 0% 0%; opacity: 1.0; }
+        }
+        @keyframes shapeDrift {
+            0% { background-position: 0 0; }
+            100% { background-position: 300px 300px; }
+        }
+        header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.9);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            padding: 10px 20px;
+            z-index: 1000;
+            transition: all 0.5s ease;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        body.dark-mode header {
+            background: rgba(45, 60, 80, 0.9);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        header .navbar-brand {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #333;
+            transition: color 0.5s ease;
+        }
+        body.dark-mode header .navbar-brand {
+            color: #fff;
+        }
+        header .nav-container {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        header .nav-link {
+            color: #555;
+            font-weight: 500;
+            text-decoration: none;
+            transition: color 0.3s ease;
+            font-size: 1.5rem;
+        }
+        body.dark-mode header .nav-link {
+            color: #ddd;
+        }
+        header .nav-link:hover {
+            color: #ff5722;
+        }
+        body.dark-mode header .nav-link:hover {
+            color: #ff7043;
+        }
+        header .theme-toggle {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            color: #555;
+            cursor: pointer;
+            transition: color 0.3s ease, transform 0.3s ease;
+        }
+        body.dark-mode header .theme-toggle {
+            color: #ddd;
+        }
+        header .theme-toggle:hover {
+            color: #ff5722;
+            transform: scale(1.2);
+        }
+        body.dark-mode header .theme-toggle:hover {
+            color: #ff7043;
+        }
+        .container {
+            margin-top: 80px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: calc(100vh - 80px);
+        }
+        .card {
+            border: none;
+            border-radius: 20px;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+            width: 100%;
+            max-width: 700px;
+            background: rgba(255, 255, 255, 0.95);
+            transition: all 0.5s ease;
+            margin-bottom: 20px;
+        }
+        body.dark-mode .card {
+            background: rgba(45, 60, 80, 0.95);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+            color: #fff;
+        }
+        .chart-container {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90%;
+            max-width: 800px;
+            height: 400px;
+            border-radius: 20px;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out;
+        }
+        body.light-mode .chart-container {
+            background: rgba(255, 255, 255, 1);
+        }
+        body.dark-mode .chart-container {
+            background: rgba(45, 60, 80, 1);
+        }
+        .chart-container.active {
+            display: block;
+            opacity: 1;
+        }
+        .chart-close {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 1.5rem;
+            background: none;
+            border: none;
+            color: #555;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+        body.dark-mode .chart-close {
+            color: #ddd;
+        }
+        .chart-close:hover {
+            color: #ff4444;
+        }
+        body.dark-mode .data-item {
+            background: rgba(60, 75, 95, 0.7);
+        }
+        body.dark-mode .data-item i {
+            color: #ddd;
+        }
+        body.dark-mode .footer {
+            color: #ddd;
+        }
+        .data-item {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            background: rgba(250, 250, 250, 0.8);
+            border-radius: 12px;
+            margin-bottom: 12px;
+            flex-wrap: nowrap;
+            transition: all 0.5s ease;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+        .data-item i {
+            font-size: 1.6rem;
+            margin-right: 12px;
+            color: #555;
+            flex-shrink: 0;
+            transition: color 0.5s ease;
+        }
+        .data-label {
+            font-size: 1.2rem;
+            flex-grow: 1;
+            min-width: 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            transition: color 0.5s ease;
+        }
+        .data-value {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-left: 12px;
+            flex-shrink: 0;
+            transition: color 0.5s ease;
+        }
+        .data-value .trend-arrow {
+            margin-right: 5px;
+            font-size: 1.8rem !important;
+        }
+        .indicator {
+            font-size: 1.4rem;
+            margin-left: 12px;
+            transition: color 0.5s ease;
+            flex-shrink: 0;
+        }
+        .indicator.state-on {
+            color: #28a745;
+        }
+        .indicator.state-off {
+            color: #555;
+        }
+        body.dark-mode .indicator.state-on {
+            color: #28a745;
+        }
+        body.dark-mode .indicator.state-off {
+            color: #aaa;
+        }
+        .btn-led {
+            width: 100%;
+            padding: 12px;
+            font-size: 1.3rem;
+            font-weight: 600;
+            border-radius: 15px;
+            transition: all 0.5s ease;
+        }
+        .btn-led:hover {
+            opacity: 0.9;
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        .btn-theme-toggle {
+            width: 100%;
+            padding: 12px;
+            font-size: 1.3rem;
+            font-weight: 600;
+            border-radius: 15px;
+            margin-top: 10px;
+            background: linear-gradient(135deg, #6c757d, #5a6268);
+            color: white;
+            border: none;
+            transition: all 0.5s ease;
+        }
+        .btn-theme-toggle:hover {
+            opacity: 0.9;
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        .engineering-menu-btn {
+            width: 100%;
+            padding: 12px;
+            font-size: 1.3rem;
+            font-weight: 600;
+            border-radius: 15px;
+            margin-top: 10px;
+            background: linear-gradient(135deg, #ffc107, #ff9800);
+            color: white;
+            border: none;
+            transition: all 0.5s ease;
+        }
+        .engineering-menu-btn:hover {
+            opacity: 0.9;
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        body.dark-mode .engineering-menu-btn {
+            background: linear-gradient(135deg, #ffca28, #f57c00);
+        }
+        .engineering-menu {
+            display: none;
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+            transition: all 0.5s ease;
+        }
+        body.dark-mode .engineering-menu {
+            background: rgba(45, 60, 80, 0.95);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+        }
+        .engineering-menu.active {
+            display: block;
+        }
+        .btn-firmware, .btn-file-system {
+            width: 100%;
+            padding: 12px;
+            font-size: 1.3rem;
+            font-weight: 600;
+            border-radius: 15px;
+            margin-top: 10px;
+            transition: all 0.5s ease;
+        }
+        .btn-firmware {
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
+        }
+        .btn-firmware:hover {
+            opacity: 0.9;
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        body.dark-mode .btn-firmware {
+            background: linear-gradient(135deg, #0069d9, #004085);
+        }
+        .btn-file-system {
+            background: linear-gradient(135deg, #28a745, #218838);
+            color: white;
+        }
+        .btn-file-system:hover {
+            opacity: 0.9;
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        body.dark-mode .btn-file-system {
+            background: linear-gradient(135deg, #1f7a3e, #165c2a);
+        }
+        .btn-gray {
+            background: linear-gradient(135deg, #6c757d, #5a6268);
+            color: white;
+            border: none;
+        }
+        .btn-gray:hover {
+            opacity: 0.9;
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        body.dark-mode .btn-gray {
+            background: linear-gradient(135deg, #5a6268, #495057);
+        }
+        .footer {
+            text-align: center;
+            margin-top: 15px;
+            font-size: 1rem;
+            color: #666;
+            transition: color 0.5s ease;
+        }
+        @media (max-width: 450px) {
+            header { padding: 5px 10px; }
+            header .navbar-brand { font-size: 1.2rem; }
+            header .nav-container { gap: 10px; }
+            header .nav-link { font-size: 1.2rem; }
+            header .theme-toggle { font-size: 1.2rem; }
+            .container { margin-top: 60px; min-height: calc(100vh - 60px); }
+            .card-body { padding: 10px; }
+            .data-item { padding: 8px; }
+            .data-label { font-size: 0.9rem; }
+            .data-value { font-size: 0.9rem; }
+            .indicator { font-size: 1rem; margin-left: 5px; }
+            .data-item i { font-size: 1.2rem; margin-right: 5px; }
+            .btn-led, .btn-theme-toggle, .engineering-menu-btn, .btn-firmware, .btn-file-system {
+                font-size: 1rem;
+                padding: 8px;
+                border-radius: 10px;
+            }
+            .engineering-menu { padding: 10px; }
+            .chart-container { width: 85%; height: 300px; padding: 15px; }
+        }
+    </style>
+</head>
+<body class="light-mode">
+    <header>
+        <nav class="navbar">
+            <span class="navbar-brand"><i class="fas fa-microchip me-2"></i>ESP8266</span>
+            <div class="nav-container">
+                <a class="nav-link active" href="/index.html" title="Головна"><i class="fas fa-home"></i></a>
+                <a class="nav-link" href="/info.html" title="Інформація"><i class="fas fa-info-circle"></i></a>
+                <button id="openTempChartHeader" class="theme-toggle" title="Графік температури"><i class="fas fa-thermometer-half"></i></button>
+                <button id="openHumidityChartHeader" class="theme-toggle" title="Графік вологості"><i class="fas fa-tint"></i></button>
+                <button id="resetEsp" class="theme-toggle" title="Скинути ESP8266"><i class="fas fa-sync-alt"></i></button>
+                <button id="toggleThemeHeader" class="theme-toggle"><i class="fas fa-sun"></i></button>
+            </div>
+        </nav>
+    </header>
+    <div class="container">
+        <div class="card">
+            <div class="card-body">
+                <h2 class="card-title text-center mb-4">
+                    <i class="fas fa-microchip me-2"></i>ESP8266 Моніторинг
+                </h2>
+                <div class="data-item">
+                    <i class="fas fa-thermometer-half"></i>
+                    <span class="data-label">Температура</span>
+                    <span class="data-value" id="temperature"><span id="temperatureTrend"></span>--°C</span>
+                </div>
+                <div class="data-item">
+                    <i class="fas fa-tint"></i>
+                    <span class="data-label">Вологість</span>
+                    <span class="data-value" id="humidity"><span id="humidityTrend"></span>--%</span>
+                </div>
+                <div class="data-item">
+                    <i class="fas fa-toggle-on"></i>
+                    <span class="data-label">Кнопка</span>
+                    <i class="fas fa-circle indicator state-off" id="buttonIndicator"></i>
+                </div>
+                <div class="data-item">
+                    <i class="fas fa-lightbulb"></i>
+                    <span class="data-label">LED</span>
+                    <i class="fas fa-circle indicator state-off" id="ledIndicator"></i>
+                </div>
+                <button id="toggleLed" class="btn btn-gray btn-led">Увімкнути LED</button>
+                <button id="engineeringMenuBtn" class="engineering-menu-btn">Інженерне меню</button>
+                <div id="engineeringMenu" class="engineering-menu">
+                    <button id="updateFirmware" class="btn-firmware">Оновити прошивку</button>
+                    <button id="viewFileSystem" class="btn-file-system">Переглянути файлову систему</button>
+                    <button id="toggleTheme" class="btn-theme-toggle">Увімкнути нічний режим</button>
+                </div>
+                <div class="footer">Дані оновлюються в реальному часі</div>
+            </div>
+        </div>
+        <!-- Додано контейнер для віддалених даних через ESP-NOW -->
+        <div class="card">
+            <div class="card-body">
+                <h2 class="card-title text-center mb-4">
+                    <i class="fas fa-satellite-dish me-2"></i>Віддалений датчик (ESP-NOW)
+                </h2>
+                <div class="data-item">
+                    <i class="fas fa-thermometer-half"></i>
+                    <span class="data-label">Температура</span>
+                    <span class="data-value" id="remoteTemperature">--°C</span>
+                </div>
+                <div class="data-item">
+                    <i class="fas fa-tint"></i>
+                    <span class="data-label">Вологість</span>
+                    <span class="data-value" id="remoteHumidity">--%</span>
+                </div>
+                <div class="data-item">
+                    <i class="fas fa-wind"></i>
+                    <span class="data-label">Тиск</span>
+                    <span class="data-value" id="remotePressure">-- hPa</span>
+                </div>
+                <div class="footer">Дані від другого ESP8266</div>
+            </div>
+        </div>
+        <div id="tempChartContainer" class="chart-container">
+            <button class="chart-close">×</button>
+            <canvas id="tempChart"></canvas>
+        </div>
+        <div id="humidityChartContainer" class="chart-container">
+            <button class="chart-close">×</button>
+            <canvas id="humidityChart"></canvas>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let tempChart, humidityChart;
+        let lastHumidityTrend = '';
+        let lastTemperatureTrend = '';
+
+        function updateData() {
+            fetch('/data')
+                .then(response => response.json())
+                .then(data => {
+                    const tempSpan = document.getElementById('temperature');
+                    tempSpan.innerHTML = `<span id="temperatureTrend">${lastTemperatureTrend}</span>${data.temperature}°C`;
+                    const humiditySpan = document.getElementById('humidity');
+                    humiditySpan.innerHTML = `<span id="humidityTrend">${lastHumidityTrend}</span>${data.humidity}%`;
+                    const buttonIndicator = document.getElementById('buttonIndicator');
+                    buttonIndicator.className = 'fas fa-circle indicator ' + (data.buttonState ? 'state-on' : 'state-off');
+                    const ledIndicator = document.getElementById('ledIndicator');
+                    ledIndicator.className = 'fas fa-circle indicator ' + (data.ledState ? 'state-on' : 'state-off');
+                    updateLedButton(data.ledState);
+
+                    // Оновлення віддалених даних через ESP-NOW
+                    document.getElementById('remoteTemperature').textContent = `${data.remoteTemperature}°C`;
+                    document.getElementById('remoteHumidity').textContent = `${data.remoteHumidity}%`;
+                    document.getElementById('remotePressure').textContent = `${data.remotePressure} hPa`;
+                })
+                .catch(error => console.log('Помилка:', error));
+        }
+
+        function updateHumidityTrend() {
+            fetch('/humidityTrend')
+                .then(response => response.json())
+                .then(data => {
+                    const trend = data.trend;
+                    let newTrend = '';
+                    if (trend.length >= 3) {
+                        const [latest, second, third] = trend;
+                        if (latest > second && second > third) {
+                            newTrend = '<svg width="12" height="12" viewBox="0 0 12 12"><polygon points="6,2 10,10 2,10" fill="#ff0000"/></svg>';
+                        } else if (latest < second && second < third) {
+                            newTrend = '<svg width="12" height="12" viewBox="0 0 12 12"><polygon points="6,10 10,2 2,2" fill="#0000ff"/></svg>';
+                        }
+                    }
+                    if (newTrend !== lastHumidityTrend) {
+                        lastHumidityTrend = newTrend;
+                        const humiditySpan = document.getElementById('humidity');
+                        const currentHumidity = humiditySpan.innerText.replace(/[^0-9.]/g, '') + '%';
+                        humiditySpan.innerHTML = `<span id="humidityTrend">${lastHumidityTrend}</span>${currentHumidity}`;
+                    }
+                })
+                .catch(error => console.log('Помилка:', error));
+        }
+
+        function updateTemperatureTrend() {
+            fetch('/temperatureTrend')
+                .then(response => response.json())
+                .then(data => {
+                    const trend = data.trend;
+                    let newTrend = '';
+                    if (trend.length >= 3) {
+                        const [latest, second, third] = trend;
+                        if (latest > second && second > third) {
+                            newTrend = '<svg width="12" height="12" viewBox="0 0 12 12"><polygon points="6,2 10,10 2,10" fill="#ff0000"/></svg>';
+                        } else if (latest < second && second < third) {
+                            newTrend = '<svg width="12" height="12" viewBox="0 0 12 12"><polygon points="6,10 10,2 2,2" fill="#0000ff"/></svg>';
+                        }
+                    }
+                    if (newTrend !== lastTemperatureTrend) {
+                        lastTemperatureTrend = newTrend;
+                        const tempSpan = document.getElementById('temperature');
+                        const currentTemp = tempSpan.innerText.replace(/[^0-9.]/g, '') + '°C';
+                        tempSpan.innerHTML = `<span id="temperatureTrend">${lastTemperatureTrend}</span>${currentTemp}`;
+                    }
+                })
+                .catch(error => console.log('Помилка:', error));
+        }
+
+        function updateLedButton(state) {
+            const button = document.getElementById('toggleLed');
+            if (state) {
+                button.className = 'btn btn-success btn-led';
+                button.innerText = 'Вимкнути LED';
+            } else {
+                button.className = 'btn btn-gray btn-led';
+                button.innerText = 'Увімкнути LED';
+            }
+        }
+
+        function toggleTheme() {
+            const body = document.body;
+            const toggleHeader = document.getElementById('toggleThemeHeader');
+            const toggleMenu = document.getElementById('toggleTheme');
+            if (body.classList.contains('light-mode')) {
+                body.classList.remove('light-mode');
+                body.classList.add('dark-mode');
+                toggleHeader.innerHTML = '<i class="fas fa-moon"></i>';
+                toggleMenu.innerText = 'Увімкнути світлий режим';
+                if (tempChart) tempChart.update();
+                if (humidityChart) humidityChart.update();
+            } else {
+                body.classList.remove('dark-mode');
+                body.classList.add('light-mode');
+                toggleHeader.innerHTML = '<i class="fas fa-sun"></i>';
+                toggleMenu.innerText = 'Увімкнути нічний режим';
+                if (tempChart) tempChart.update();
+                if (humidityChart) humidityChart.update();
+            }
+        }
+
+        document.getElementById('toggleLed').onclick = function() {
+            const currentState = document.getElementById('ledIndicator').classList.contains('state-on');
+            const newState = currentState ? 'off' : 'on';
+            fetch('/led?state=' + newState)
+                .then(response => response.json())
+                .then(data => {
+                    updateLedButton(data.ledState);
+                    const ledIndicator = document.getElementById('ledIndicator');
+                    ledIndicator.className = 'fas fa-circle indicator ' + (data.ledState ? 'state-on' : 'state-off');
+                })
+                .catch(error => console.log('Помилка:', error));
+        };
+
+        document.getElementById('toggleThemeHeader').onclick = toggleTheme;
+        document.getElementById('toggleTheme').onclick = toggleTheme;
+
+        document.getElementById('updateFirmware').onclick = function() {
+            window.location.href = '/firmware';
+        };
+
+        document.getElementById('viewFileSystem').onclick = function() {
+            window.location.href = '/fs';
+        };
+
+        document.getElementById('engineeringMenuBtn').onclick = function() {
+            const menu = document.getElementById('engineeringMenu');
+            menu.classList.toggle('active');
+            this.innerText = menu.classList.contains('active') ? 'Закрити інженерне меню' : 'Інженерне меню';
+        };
+
+        document.getElementById('openTempChartHeader').onclick = function() {
+            const chartContainer = document.getElementById('tempChartContainer');
+            chartContainer.classList.add('active');
+            if (!tempChart) initializeTempChart();
+            fetchGraphData('temperature');
+        };
+
+        document.getElementById('openHumidityChartHeader').onclick = function() {
+            const chartContainer = document.getElementById('humidityChartContainer');
+            chartContainer.classList.add('active');
+            if (!humidityChart) initializeHumidityChart();
+            fetchGraphData('humidity');
+        };
+
+        document.getElementById('resetEsp').onclick = function() {
+            if (confirm('Скинути ESP8266?')) {
+                fetch('/reset')
+                    .then(() => console.log('ESP8266 скинуто'))
+                    .catch(error => console.log('Помилка:', error));
+            }
+        };
+
+        document.querySelectorAll('.chart-close').forEach(closeBtn => {
+            closeBtn.onclick = function() {
+                const container = this.closest('.chart-container');
+                container.classList.remove('active');
+            };
+        });
+
+        function initializeTempChart() {
+            const ctx = document.getElementById('tempChart').getContext('2d');
+            tempChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: [{
+                        label: 'Температура (°C)',
+                        data: [],
+                        borderColor: '#ff5722',
+                        fill: false,
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'minute',
+                                displayFormats: { minute: 'HH:mm' }
+                            },
+                            title: { display: true, text: 'Час' }
+                        },
+                        y: {
+                            title: { display: true, text: 'Температура (°C)' },
+                            beginAtZero: false
+                        }
+                    },
+                    plugins: {
+                        legend: { labels: { color: getComputedStyle(document.body).color } },
+                        zoom: {
+                            zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' },
+                            pan: { enabled: true, mode: 'x' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function initializeHumidityChart() {
+            const ctx = document.getElementById('humidityChart').getContext('2d');
+            humidityChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    datasets: [{
+                        label: 'Вологість (%)',
+                        data: [],
+                        borderColor: '#0288d1',
+                        fill: false,
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'minute',
+                                displayFormats: { minute: 'HH:mm' }
+                            },
+                            title: { display: true, text: 'Час' }
+                        },
+                        y: {
+                            title: { display: true, text: 'Вологість (%)' },
+                            beginAtZero: true,
+                            max: 100
+                        }
+                    },
+                    plugins: {
+                        legend: { labels: { color: getComputedStyle(document.body).color } },
+                        zoom: {
+                            zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' },
+                            pan: { enabled: true, mode: 'x' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function fetchGraphData(type) {
+            fetch('/graphData')
+                .then(response => response.json())
+                .then(data => {
+                    const chart = type === 'temperature' ? tempChart : humidityChart;
+                    const values = type === 'temperature' ? data.temperature : data.humidity;
+                    chart.data.datasets[0].data = data.timestamps.map((time, index) => ({
+                        x: new Date().setHours(...time.split(':'), 0),
+                        y: values[index]
+                    }));
+                    chart.data.datasets[0].label = type === 'temperature'
+                        ? `Температура (°C) [Max: ${data.maxTemp}°C, Min: ${data.minTemp}°C]`
+                        : `Вологість (%) [Max: ${data.maxHumid}%, Min: ${data.minHumid}%]`;
+                    chart.update();
+                })
+                .catch(error => console.log('Помилка:', error));
+        }
+
+        setInterval(updateData, 1000);
+        setInterval(() => {
+            updateHumidityTrend();
+            updateTemperatureTrend();
+        }, 10000);
+        updateData();
+        updateHumidityTrend();
+        updateTemperatureTrend();
+    </script>
+    <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'91ee94a10cfb0618',t:'MTc0MTczMzEwOS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
+</body>
+</html>

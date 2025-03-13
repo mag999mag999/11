@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Файлова система LittleFS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: linear-gradient(135deg, #f8f9fa, #e0eafc); padding: 20px; }
+        .container { max-width: 800px; }
+        h2 { color: #333; text-align: center; margin-bottom: 20px; }
+        .table { background: white; border-radius: 10px; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        thead { background: #007bff; color: white; }
+        tbody tr:hover { background: #f1f1f1; }
+        .btn { border-radius: 8px; padding: 6px 12px; }
+        .btn-danger { margin-left: 5px; }
+        .btn-back, .btn-upload { margin-top: 20px; display: block; width: 200px; margin-left: auto; margin-right: auto; }
+        .upload-form { text-align: center; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Вміст файлової системи LittleFS</h2>
+        <div class="upload-form">
+            <form method="POST" action="/fs/upload" enctype="multipart/form-data">
+                <input type="file" name="file" class="form-control d-inline-block w-auto" required>
+                <button type="submit" class="btn btn-success btn-upload">Завантажити файл</button>
+            </form>
+        </div>
+        <table class="table table-striped">
+            <thead>
+                <tr><th>Файл</th><th>Розмір</th><th>Дії</th></tr>
+            </thead>
+            <tbody id="fileList"></tbody>
+        </table>
+        <a href="/" class="btn btn-secondary btn-back">Повернутися на головну</a>
+    </div>
+    <script>
+        fetch('/fs/list')
+            .then(response => {
+                if (!response.ok) throw new Error('Помилка запиту: ' + response.status);
+                return response.json();
+            })
+            .then(data => {
+                const tbody = document.getElementById('fileList');
+                if (data.files && data.files.length > 0) {
+                    data.files.forEach(file => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td>${file.name}</td>
+                            <td>${file.size} байт</td>
+                            <td>
+                                <a href="/fs/download?file=${file.name}" class="btn btn-primary btn-sm">Завантажити</a>
+                                <button onclick="deleteFile('${file.name}')" class="btn btn-danger btn-sm">Видалити</button>
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="3" class="text-center">Файли не знайдено</td></tr>';
+                }
+            })
+            .catch(error => {
+                console.log('Помилка:', error);
+                const tbody = document.getElementById('fileList');
+                tbody.innerHTML = '<tr><td colspan="3" class="text-center">Помилка завантаження списку файлів</td></tr>';
+            });
+
+        function deleteFile(filename) {
+            if (confirm('Видалити ' + filename + '?')) {
+                fetch('/fs/delete?file=' + filename, { method: 'DELETE' })
+                    .then(response => {
+                        if (response.ok) location.reload();
+                        else alert('Помилка видалення');
+                    })
+                    .catch(error => alert('Помилка: ' + error));
+            }
+        }
+
+        document.querySelector('form').onsubmit = function(e) {
+            e.preventDefault();
+            let formData = new FormData(this);
+            fetch('/fs/upload', { method: 'POST', body: formData })
+                .then(response => response.text())
+                .then(text => { alert(text); location.reload(); })
+                .catch(error => alert('Помилка завантаження: ' + error));
+        };
+    </script>
+</body>
+</html>
