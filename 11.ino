@@ -8,8 +8,8 @@
 #include <Updater.h>
 #include <espnow.h> // Додано бібліотеку ESP-NOW
 
-const char* ssid = "ASUS999";
-const char* password = "2341515m";
+const char* ssid = "?";
+const char* password = "?";
 
 ESP8266WebServer server(80);
 Adafruit_AHTX0 aht;
